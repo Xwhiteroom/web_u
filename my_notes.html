@@ -1,0 +1,1539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Folio — a paper notebook</title>
+<style>
+  :root{
+    --paper:#FBF9F4;
+    --paper-edge:#EFEAE0;
+    --ink:#23262B;
+    --ink-soft:#5B6168;
+    --accent:#36495E;
+    --accent-2:#4C6482;
+    --accent-soft:#D7E0E8;
+    --brass:#AD8A54;
+    --brass-soft:#EFE4CC;
+    --sidebar-bg:#1B2027;
+    --sidebar-bg-2:#242A33;
+    --sidebar-text:#DCE2E9;
+    --sidebar-text-dim:#838C9C;
+    --danger:#A6453C;
+    --danger-soft:#F2DCD9;
+    --rule:#C7D6E2;
+    --margin-rule:#D99E9E;
+    --shadow:0 18px 45px rgba(18,22,28,.20), 0 2px 10px rgba(18,22,28,.10);
+    --font-serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Noto Serif",serif;
+    --font-sans:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    font-family:var(--font-sans);
+    color:var(--ink);
+    background:var(--paper-edge);
+    overflow:hidden;
+  }
+  button{font-family:inherit;}
+  input,select,textarea{font-family:inherit;}
+
+  /* ---------- app shell ---------- */
+  .app{
+    display:flex;
+    height:100vh;
+    width:100vw;
+  }
+
+  /* ---------- sidebar ---------- */
+  .sidebar{
+    width:290px;
+    flex:0 0 290px;
+    background:linear-gradient(180deg,var(--sidebar-bg),var(--sidebar-bg-2));
+    color:var(--sidebar-text);
+    display:flex;
+    flex-direction:column;
+    height:100%;
+  }
+  .brand{
+    padding:22px 20px 14px;
+    border-bottom:1px solid rgba(255,255,255,.06);
+  }
+  .brand h1{
+    margin:0;
+    font-family:var(--font-serif);
+    font-size:26px;
+    font-weight:600;
+    letter-spacing:.3px;
+    color:#fff;
+  }
+  .brand p{
+    margin:4px 0 0;
+    font-size:12.5px;
+    color:var(--sidebar-text-dim);
+  }
+  .sidebar-controls{
+    padding:14px 16px 10px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .btn-new{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    background:var(--brass);
+    color:#241C0E;
+    border:none;
+    border-radius:8px;
+    padding:10px 12px;
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+    transition:background .15s ease, transform .1s ease;
+  }
+  .btn-new:hover{background:#c4a06a;}
+  .btn-new:active{transform:translateY(1px);}
+  .search-wrap{position:relative;}
+  .search-wrap input{
+    width:100%;
+    background:rgba(255,255,255,.07);
+    border:1px solid rgba(255,255,255,.08);
+    color:var(--sidebar-text);
+    border-radius:7px;
+    padding:8px 10px 8px 30px;
+    font-size:13.5px;
+    outline:none;
+  }
+  .search-wrap input::placeholder{color:var(--sidebar-text-dim);}
+  .search-wrap input:focus{border-color:var(--brass);}
+  .search-icon{
+    position:absolute;left:9px;top:50%;transform:translateY(-50%);
+    width:14px;height:14px;opacity:.55;
+  }
+  .tag-filters{
+    display:flex;flex-wrap:wrap;gap:6px;
+    padding:0 16px 8px;
+    max-height:62px;overflow-y:auto;
+  }
+  .tag-chip{
+    font-size:11.5px;
+    padding:3px 9px;
+    border-radius:999px;
+    background:rgba(255,255,255,.07);
+    color:var(--sidebar-text-dim);
+    cursor:pointer;
+    border:1px solid rgba(255,255,255,.08);
+    white-space:nowrap;
+  }
+  .tag-chip.active{
+    background:var(--brass-soft);
+    color:#3a2e14;
+    border-color:var(--brass-soft);
+  }
+  .notes-list{
+    flex:1;
+    overflow-y:auto;
+    padding:4px 10px 14px;
+  }
+  .note-item{
+    position:relative;
+    display:flex;
+    gap:10px;
+    padding:10px 10px 10px 12px;
+    border-radius:9px;
+    cursor:pointer;
+    margin-bottom:3px;
+    border:1px solid transparent;
+  }
+  .note-item:hover{background:rgba(255,255,255,.045);}
+  .note-item.active{
+    background:rgba(255,255,255,.08);
+    border-color:rgba(255,255,255,.10);
+  }
+  .note-strip{
+    width:4px;border-radius:3px;flex:0 0 4px;
+  }
+  .note-meta{min-width:0;flex:1;}
+  .note-title{
+    font-size:14px;font-weight:600;color:#fff;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .note-snippet{
+    font-size:12px;color:var(--sidebar-text-dim);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    margin-top:2px;
+  }
+  .note-sub{
+    display:flex;align-items:center;gap:6px;
+    margin-top:5px;font-size:10.5px;color:var(--sidebar-text-dim);
+  }
+  .note-tag-chip{
+    background:rgba(255,255,255,.08);
+    padding:1px 6px;border-radius:999px;
+  }
+  .note-del{
+    position:absolute;right:6px;top:8px;
+    width:20px;height:20px;border-radius:5px;
+    display:none;align-items:center;justify-content:center;
+    background:transparent;border:none;color:var(--sidebar-text-dim);
+    cursor:pointer;
+  }
+  .note-item:hover .note-del{display:flex;}
+  .note-del:hover{background:var(--danger);color:#fff;}
+  .empty-list{
+    padding:30px 16px;text-align:center;color:var(--sidebar-text-dim);font-size:13px;
+  }
+  .sidebar-footer{
+    padding:10px 16px 14px;
+    border-top:1px solid rgba(255,255,255,.06);
+    display:flex;gap:8px;
+  }
+  .btn-ghost{
+    flex:1;
+    background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.08);
+    color:var(--sidebar-text);
+    border-radius:7px;
+    padding:7px 6px;
+    font-size:11.5px;
+    cursor:pointer;
+    display:flex;align-items:center;justify-content:center;gap:5px;
+  }
+  .btn-ghost:hover{background:rgba(255,255,255,.12);}
+
+  /* ---------- github sync bar ---------- */
+  .sync-bar{
+    margin:0 16px 10px;
+    display:flex;align-items:center;gap:8px;
+    padding:8px 10px;
+    border-radius:8px;
+    background:rgba(255,255,255,.05);
+    border:1px solid rgba(255,255,255,.07);
+    cursor:pointer;
+  }
+  .sync-bar:hover{background:rgba(255,255,255,.08);}
+  .sync-dot{
+    width:8px;height:8px;border-radius:50%;flex:0 0 8px;
+    background:#6B7280;
+  }
+  .sync-dot.synced{background:#5FAE73;}
+  .sync-dot.syncing{background:#D9A441;animation:pulse 1s ease-in-out infinite;}
+  .sync-dot.error{background:#D9635A;}
+  .sync-dot.offline{background:#D98B41;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+  .sync-text{
+    flex:1;font-size:12px;color:var(--sidebar-text-dim);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .sync-gear{
+    width:22px;height:22px;flex:0 0 22px;border-radius:5px;
+    display:flex;align-items:center;justify-content:center;
+    background:none;border:none;color:var(--sidebar-text-dim);cursor:pointer;
+  }
+  .sync-gear:hover{background:rgba(255,255,255,.1);color:#fff;}
+  .sync-gear svg{width:14px;height:14px;}
+
+  /* ---------- settings modal ---------- */
+  .field{margin-bottom:14px;}
+  .field label{
+    display:block;font-size:12.5px;font-weight:600;color:var(--ink);margin-bottom:5px;
+  }
+  .field .hint{font-size:11.5px;color:var(--ink-soft);margin-top:4px;line-height:1.5;}
+  .field input[type=text], .field input[type=password]{
+    width:100%;padding:8px 10px;border:1px solid #DDD6C6;border-radius:7px;
+    font-size:13px;outline:none;background:#FBF9F4;color:var(--ink);
+  }
+  .field input:focus{border-color:var(--accent);}
+  .field-row{display:flex;gap:10px;}
+  .field-row .field{flex:1;}
+  .pw-wrap{position:relative;}
+  .pw-wrap button{
+    position:absolute;right:6px;top:50%;transform:translateY(-50%);
+    background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:11.5px;
+  }
+  .check-row{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink-soft);margin-bottom:14px;}
+  .modal.settings{width:380px;max-width:90vw;}
+  .modal-status{
+    font-size:12.5px;padding:8px 10px;border-radius:7px;margin-bottom:14px;
+    background:var(--accent-soft);color:var(--accent);display:none;
+  }
+  .modal-status.show{display:block;}
+  .modal-status.err{background:var(--danger-soft);color:var(--danger);}
+
+  /* ---------- main area ---------- */
+  .main{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    min-width:0;
+    height:100%;
+    background:
+      radial-gradient(ellipse at top, #fff 0%, var(--paper-edge) 70%);
+  }
+  .toolbar{
+    background:#fff;
+    border-bottom:1px solid #E6E1D6;
+    padding:10px 26px;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    flex:0 0 auto;
+  }
+  .toolbar-row{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  }
+  .title-input{
+    font-family:var(--font-serif);
+    font-size:21px;
+    font-weight:600;
+    border:none;
+    outline:none;
+    color:var(--ink);
+    flex:1 1 260px;
+    min-width:120px;
+    background:transparent;
+  }
+  .title-input::placeholder{color:#B9B2A3;}
+  .tags-editor{
+    display:flex;align-items:center;flex-wrap:wrap;gap:6px;
+    flex:1 1 220px;
+    min-width:160px;
+  }
+  .tag-pill{
+    display:flex;align-items:center;gap:5px;
+    background:var(--accent-soft);
+    color:var(--accent);
+    font-size:12px;
+    padding:3px 4px 3px 9px;
+    border-radius:999px;
+  }
+  .tag-pill button{
+    background:none;border:none;cursor:pointer;color:var(--accent);
+    width:16px;height:16px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-size:13px;line-height:1;
+  }
+  .tag-pill button:hover{background:rgba(54,73,94,.18);}
+  .tag-input{
+    border:none;outline:none;font-size:12.5px;color:var(--ink-soft);
+    min-width:90px;flex:1;background:transparent;
+  }
+  select.ctrl, .icon-select{
+    border:1px solid #E1DACB;
+    background:#FBF9F4;
+    color:var(--ink);
+    border-radius:7px;
+    padding:6px 8px;
+    font-size:12.5px;
+    cursor:pointer;
+    outline:none;
+  }
+  .util-group{display:flex;gap:4px;margin-left:auto;}
+  .icon-btn{
+    width:33px;height:33px;
+    border-radius:7px;
+    border:1px solid transparent;
+    background:transparent;
+    color:var(--ink-soft);
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+  }
+  .icon-btn svg{width:17px;height:17px;}
+  .icon-btn:hover{background:var(--accent-soft);color:var(--accent);}
+  .icon-btn.danger:hover{background:var(--danger-soft);color:var(--danger);}
+  .icon-btn.active{background:var(--accent);color:#fff;}
+  .divider{width:1px;align-self:stretch;background:#E6E1D6;margin:2px 2px;}
+  .save-indicator{
+    font-size:11.5px;color:var(--ink-soft);
+    margin-left:10px;white-space:nowrap;
+  }
+
+  .page-scroll{
+    flex:1;
+    overflow:auto;
+    display:flex;
+    justify-content:center;
+    padding:34px 24px 60px;
+  }
+  .page{
+    background:var(--paper);
+    box-shadow:var(--shadow);
+    position:relative;
+    flex:0 0 auto;
+    transition:width .2s ease, min-height .2s ease;
+  }
+  .page::before{
+    content:"";
+    position:absolute;top:0;bottom:0;left:26mm;
+    width:1px;
+    background:var(--margin-rule);
+    opacity:.55;
+  }
+  .page.size-A4{ width:210mm; min-height:297mm; }
+  .page.size-A5{ width:148mm; min-height:210mm; }
+
+  .editor{
+    height:100%;
+    min-height:inherit;
+    padding:18mm 16mm 18mm 32mm;
+    outline:none;
+    font-size:15.5px;
+    line-height:1.85;
+    color:var(--ink);
+  }
+  .editor.font-serif{font-family:var(--font-serif);}
+  .editor.font-sans{font-family:var(--font-sans); line-height:1.65;}
+  .editor.paper-ruled{
+    background-image:repeating-linear-gradient(
+      to bottom, transparent, transparent 34px, var(--rule) 35px
+    );
+    background-position:0 19mm;
+  }
+  .editor.paper-grid{
+    background-image:
+      repeating-linear-gradient(to bottom, transparent, transparent 27px, var(--rule) 28px),
+      repeating-linear-gradient(to right, transparent, transparent 27px, var(--rule) 28px);
+    background-position:0 19mm, -6mm 0;
+  }
+  .editor.paper-blank{background-image:none;}
+  .editor p{margin:0 0 .6em;}
+  .editor h2{font-size:1.3em;margin:.3em 0 .4em;color:var(--accent);}
+  .editor blockquote{
+    margin:.6em 0;padding:.3em 0 .3em 14px;
+    border-left:3px solid var(--brass);
+    color:var(--ink-soft);font-style:italic;
+  }
+  .editor img{max-width:100%;border-radius:4px;margin:10px 0;display:block;}
+  .editor table.tbl{border-collapse:collapse;margin:10px 0;width:100%;}
+  .editor table.tbl td{border:1px solid #CFC7B6;padding:6px 9px;min-width:40px;}
+  .chk-item{display:flex;align-items:flex-start;gap:8px;margin:3px 0;}
+  .chk-item input[type=checkbox]{margin-top:5px;width:15px;height:15px;accent-color:var(--accent);cursor:pointer;}
+
+  .empty-main{
+    flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;color:var(--ink-soft);
+  }
+  .empty-main h2{font-family:var(--font-serif);color:var(--ink);font-weight:600;font-size:22px;margin:0;}
+  .empty-main p{margin:0;font-size:13.5px;max-width:320px;text-align:center;}
+
+  /* ---------- drawing modal ---------- */
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(20,22,26,.55);
+    display:flex;align-items:center;justify-content:center;
+    z-index:50;
+  }
+  .modal{
+    background:#fff;border-radius:12px;padding:20px;
+    box-shadow:var(--shadow);
+    animation:modalIn .14s ease;
+  }
+  @keyframes modalIn{from{opacity:0;transform:scale(.96);}to{opacity:1;transform:scale(1);}}
+  .modal h3{margin:0 0 12px;font-family:var(--font-serif);font-size:18px;}
+  .modal canvas{
+    border:1px solid #DDD6C6;border-radius:6px;cursor:crosshair;background:#fff;touch-action:none;
+  }
+  .modal-tools{display:flex;align-items:center;gap:8px;margin:12px 0;}
+  .pen-dot{width:22px;height:22px;border-radius:50%;cursor:pointer;border:2px solid transparent;}
+  .pen-dot.active{border-color:var(--accent);}
+  .modal-actions{display:flex;justify-content:flex-end;gap:8px;}
+  .btn{
+    padding:8px 16px;border-radius:7px;font-size:13.5px;cursor:pointer;border:1px solid transparent;
+  }
+  .btn-primary{background:var(--accent);color:#fff;}
+  .btn-primary:hover{background:var(--accent-2);}
+  .btn-secondary{background:#F0EDE4;color:var(--ink);}
+  .btn-secondary:hover{background:#E6E1D6;}
+  .btn-text{background:none;color:var(--ink-soft);}
+
+  .toast{
+    position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(10px);
+    background:var(--ink);color:#fff;padding:9px 18px;border-radius:999px;font-size:13px;
+    opacity:0;pointer-events:none;transition:opacity .2s ease, transform .2s ease;
+    z-index:80;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  ::-webkit-scrollbar{width:9px;height:9px;}
+  ::-webkit-scrollbar-thumb{background:rgba(0,0,0,.18);border-radius:5px;}
+  .sidebar ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);}
+
+  @media print{
+    .sidebar,.toolbar,.page-scroll{display:none !important;}
+    body{overflow:visible;background:#fff;}
+    .print-root{display:block !important;}
+  }
+  .print-root{display:none;}
+  .print-root .page{box-shadow:none;margin:0;}
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="brand">
+      <h1>Folio</h1>
+      <p>Your paper, kept on screen</p>
+    </div>
+    <div class="sidebar-controls">
+      <button class="btn-new" id="btnNewNote">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        New note
+      </button>
+      <div class="search-wrap">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="#DCE2E9" stroke-width="2.3" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input type="text" id="searchBox" placeholder="Search notes…">
+      </div>
+    </div>
+    <div class="sync-bar" id="syncBar" title="Click to sync now, or open GitHub settings">
+      <span class="sync-dot" id="syncDot"></span>
+      <span class="sync-text" id="syncText">Not connected to GitHub</span>
+      <button class="sync-gear" id="btnGithubSettings" title="GitHub sync settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.04 1.56V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 9 19.37a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.64 15a1.7 1.7 0 0 0-1.56-1.04H3a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.63 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1.04-1.56V3a2 2 0 0 1 4 0v.09A1.7 1.7 0 0 0 15 4.63c.6.25 1.3.12 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.37 9c.25.6.78 1.01 1.56 1.04H21a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1Z"/></svg>
+      </button>
+    </div>
+    <div class="tag-filters" id="tagFilters"></div>
+    <div class="notes-list" id="notesList"></div>
+    <div class="sidebar-footer">
+      <button class="btn-ghost" id="btnExport" title="Save a backup file of every note">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 19h16"/></svg>
+        Export all
+      </button>
+      <button class="btn-ghost" id="btnImport" title="Load notes from a backup file">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M4 19h16"/></svg>
+        Import
+      </button>
+      <input type="file" id="importFile" accept=".json" style="display:none">
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main" id="mainArea">
+    <!-- populated by JS: either empty state or toolbar+page -->
+  </main>
+</div>
+
+<div class="print-root" id="printRoot"></div>
+<style id="printPageSize"></style>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ===================== storage ===================== */
+  var STORE_KEY = "folio-notebook-v1";
+  var ACCENTS = ["#36495E","#AD8A54","#5B7A6C","#8A5A5A","#6A5A8A","#4C7A8A"];
+  var accentCursor = 0;
+
+  function uid(){ return "n_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,8); }
+
+  function defaultNote(seed){
+    accentCursor = (accentCursor+1) % ACCENTS.length;
+    var now = new Date().toISOString();
+    return Object.assign({
+      id: uid(),
+      title: "",
+      tags: [],
+      pageSize: "A4",
+      paperStyle: "ruled",
+      font: "serif",
+      color: ACCENTS[accentCursor],
+      content: "<p></p>",
+      createdAt: now,
+      updatedAt: now
+    }, seed || {});
+  }
+
+  function welcomeNote(){
+    var n = defaultNote({
+      title: "Welcome to Folio",
+      tags: ["start here"],
+      paperStyle: "ruled",
+      content:
+        "<p>Folio is a standalone notebook — everything lives inside this one HTML file and your browser's storage, nothing is sent anywhere.</p>" +
+        "<p>A few things worth trying:</p>" +
+        "<div class=\"chk-item\"><input type=\"checkbox\"><span>Switch the page between A4 and A5 in the toolbar above</span></div>" +
+        "<div class=\"chk-item\"><input type=\"checkbox\" checked><span>Tick a box — checklists live right inside the page</span></div>" +
+        "<div class=\"chk-item\"><input type=\"checkbox\"><span>Paste or drop a picture straight onto the paper</span></div>" +
+        "<div class=\"chk-item\"><input type=\"checkbox\"><span>Insert a table or sketch a quick drawing from the toolbar</span></div>" +
+        "<p>Use <b>Export all</b> occasionally to save a backup file of every note — this is the only copy outside your browser, so keep one.</p>"
+    });
+    return n;
+  }
+
+  var state = loadState();
+
+  function loadState(){
+    try{
+      var raw = localStorage.getItem(STORE_KEY);
+      if(raw){
+        var parsed = JSON.parse(raw);
+        if(parsed && Array.isArray(parsed.notes)){
+          return { notes: parsed.notes, activeId: parsed.activeId || (parsed.notes[0] && parsed.notes[0].id) || null };
+        }
+      }
+    }catch(e){ console.warn("Folio: could not read saved notes", e); }
+    var w = welcomeNote();
+    return { notes: [w], activeId: w.id };
+  }
+
+  var saveTimer = null;
+  function persist(){
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function(){
+      try{
+        localStorage.setItem(STORE_KEY, JSON.stringify(state));
+        showToast("Saved");
+      }catch(e){
+        showToast("Couldn't save — storage may be full");
+      }
+      scheduleGithubSync();
+    }, 350);
+  }
+
+  function showToast(msg){
+    var t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(t._hideTimer);
+    t._hideTimer = setTimeout(function(){ t.classList.remove("show"); }, 1400);
+  }
+
+  function getActiveNote(){
+    return state.notes.find(function(n){ return n.id === state.activeId; }) || null;
+  }
+  function findNote(id){
+    return state.notes.find(function(n){ return n.id === id; }) || null;
+  }
+  function plainText(html){
+    var d = document.createElement("div");
+    d.innerHTML = html;
+    return (d.textContent || "").replace(/\s+/g," ").trim();
+  }
+  function relTime(iso){
+    var diff = (Date.now() - new Date(iso).getTime())/1000;
+    if(diff < 45) return "just now";
+    if(diff < 3600) return Math.round(diff/60) + "m ago";
+    if(diff < 86400) return Math.round(diff/3600) + "h ago";
+    if(diff < 86400*7) return Math.round(diff/86400) + "d ago";
+    return new Date(iso).toLocaleDateString();
+  }
+
+  /* ===================== github sync ===================== */
+  var GH_CFG_KEY = "folio-github-cfg-v1";
+  var GH_TOKEN_SESSION_KEY = "folio-github-token-session";
+  var GH_TOKEN_LOCAL_KEY = "folio-github-token-local";
+
+  var githubCfg = loadGithubCfg();        // {owner, repo, branch, path, remember}
+  var githubToken = loadGithubToken();     // string or null
+  var githubState = { sha:null, status:"disconnected", lastSyncedAt:null, dirty:false, message:"" };
+  var ghSyncTimer = null;
+  var ghPollTimer = null;
+
+  function loadGithubCfg(){
+    try{
+      var raw = localStorage.getItem(GH_CFG_KEY);
+      return raw ? JSON.parse(raw) : null;
+    }catch(e){ return null; }
+  }
+  function saveGithubCfg(cfg){
+    githubCfg = cfg;
+    try{ localStorage.setItem(GH_CFG_KEY, JSON.stringify(cfg)); }catch(e){}
+  }
+  function loadGithubToken(){
+    try{
+      return sessionStorage.getItem(GH_TOKEN_SESSION_KEY) || localStorage.getItem(GH_TOKEN_LOCAL_KEY) || null;
+    }catch(e){ return null; }
+  }
+  function saveGithubToken(token, remember){
+    githubToken = token;
+    try{
+      sessionStorage.removeItem(GH_TOKEN_SESSION_KEY);
+      localStorage.removeItem(GH_TOKEN_LOCAL_KEY);
+      if(remember){ localStorage.setItem(GH_TOKEN_LOCAL_KEY, token); }
+      else{ sessionStorage.setItem(GH_TOKEN_SESSION_KEY, token); }
+    }catch(e){}
+  }
+  function clearGithubToken(){
+    githubToken = null;
+    try{
+      sessionStorage.removeItem(GH_TOKEN_SESSION_KEY);
+      localStorage.removeItem(GH_TOKEN_LOCAL_KEY);
+    }catch(e){}
+  }
+  function isGithubConfigured(){
+    return !!(githubCfg && githubCfg.owner && githubCfg.repo && githubCfg.path && githubToken);
+  }
+
+  function utf8ToB64(str){ return btoa(unescape(encodeURIComponent(str))); }
+  function b64ToUtf8(str){ return decodeURIComponent(escape(atob(str))); }
+
+  function ghPathSegments(){
+    return (githubCfg.path || "data/notes.json").split("/").filter(Boolean).map(encodeURIComponent).join("/");
+  }
+  function ghContentsUrl(withRef){
+    var url = "https://api.github.com/repos/" + encodeURIComponent(githubCfg.owner) + "/" + encodeURIComponent(githubCfg.repo) + "/contents/" + ghPathSegments();
+    if(withRef && githubCfg.branch){ url += "?ref=" + encodeURIComponent(githubCfg.branch); }
+    return url;
+  }
+  function ghHeaders(){
+    return {
+      "Authorization": "Bearer " + githubToken,
+      "Accept": "application/vnd.github+json",
+      "Content-Type": "application/json"
+    };
+  }
+
+  function setSyncStatus(status, message){
+    githubState.status = status;
+    githubState.message = message || "";
+    renderSyncBar();
+  }
+
+  function renderSyncBar(){
+    var dot = document.getElementById("syncDot");
+    var text = document.getElementById("syncText");
+    if(!dot || !text) return;
+    dot.className = "sync-dot" + (githubState.status === "disconnected" ? "" : " " + githubState.status);
+    var label;
+    if(!isGithubConfigured()){
+      label = "Not connected to GitHub";
+    } else if(githubState.status === "syncing"){
+      label = "Syncing to GitHub…";
+    } else if(githubState.status === "synced"){
+      label = "Synced to GitHub" + (githubState.lastSyncedAt ? " · " + relTime(githubState.lastSyncedAt) : "");
+    } else if(githubState.status === "error"){
+      label = githubState.message || "Sync failed — click to retry";
+    } else if(githubState.status === "offline"){
+      label = "Offline — will retry";
+    } else {
+      label = githubCfg.owner + "/" + githubCfg.repo;
+    }
+    text.textContent = label;
+  }
+
+  // Fetch the current notes.json from the repo (if any). Returns parsed array, or null if the file doesn't exist yet.
+  function githubGet(){
+    return fetch(ghContentsUrl(true), { headers: ghHeaders() }).then(function(res){
+      if(res.status === 200){
+        return res.json().then(function(json){
+          githubState.sha = json.sha;
+          var text = b64ToUtf8(String(json.content || "").replace(/\n/g, ""));
+          return JSON.parse(text);
+        });
+      } else if(res.status === 404){
+        githubState.sha = null;
+        return null;
+      } else {
+        return res.json().catch(function(){ return {}; }).then(function(body){
+          var err = new Error(body.message || ("GitHub returned " + res.status));
+          err.status = res.status;
+          throw err;
+        });
+      }
+    });
+  }
+
+  // Push the current in-memory notes up to the repo, creating the file on first sync.
+  function githubPut(){
+    if(!isGithubConfigured()) return Promise.resolve();
+    setSyncStatus("syncing");
+    var body = {
+      message: "Folio: update notes — " + new Date().toISOString(),
+      content: utf8ToB64(JSON.stringify(state.notes, null, 2)),
+      branch: githubCfg.branch || "main"
+    };
+    if(githubState.sha) body.sha = githubState.sha;
+    return fetch(ghContentsUrl(false), { method:"PUT", headers: ghHeaders(), body: JSON.stringify(body), keepalive:true }).then(function(res){
+      if(res.status === 200 || res.status === 201){
+        return res.json().then(function(json){
+          githubState.sha = json.content && json.content.sha;
+          githubState.dirty = false;
+          githubState.lastSyncedAt = new Date().toISOString();
+          setSyncStatus("synced");
+        });
+      } else if(res.status === 409){
+        return handleGithubConflict();
+      } else if(res.status === 401 || res.status === 403){
+        setSyncStatus("error", "GitHub rejected the token — check it can write to this repo");
+      } else if(res.status === 404){
+        setSyncStatus("error", "Repo, branch or path not found — check settings");
+      } else {
+        return res.json().catch(function(){ return {}; }).then(function(b){
+          setSyncStatus("error", "Sync failed: " + (b.message || res.status));
+        });
+      }
+    }).catch(function(){
+      setSyncStatus("offline", "Can't reach GitHub — will retry");
+    });
+  }
+
+  function handleGithubConflict(){
+    return githubGet().then(function(remoteNotes){
+      if(remoteNotes){
+        state.notes = remoteNotes;
+        if(!state.activeId || !findNote(state.activeId)){
+          state.activeId = state.notes.length ? state.notes[0].id : null;
+        }
+        try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){}
+        renderSidebar();
+        renderMain();
+      }
+      setSyncStatus("error", "Notes changed on GitHub elsewhere — reloaded the latest version");
+    });
+  }
+
+  function scheduleGithubSync(){
+    if(!isGithubConfigured()) return;
+    githubState.dirty = true;
+    clearTimeout(ghSyncTimer);
+    ghSyncTimer = setTimeout(function(){
+      if(githubState.dirty) githubPut();
+    }, 2500);
+  }
+
+  function syncNow(){
+    if(!isGithubConfigured()){ openGithubSettings(); return; }
+    clearTimeout(ghSyncTimer);
+    githubPut();
+  }
+
+  function connectAndLoadGithub(){
+    if(!isGithubConfigured()){ renderSyncBar(); return; }
+    setSyncStatus("syncing");
+    githubGet().then(function(remoteNotes){
+      if(remoteNotes === null){
+        // nothing in the repo yet — push what we have locally to create it
+        githubState.dirty = true;
+        githubPut();
+      } else {
+        // the repo's copy is authoritative, even if it's an empty list
+        state.notes = remoteNotes;
+        state.activeId = state.notes.length ? state.notes[0].id : null;
+        try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){}
+        renderSidebar();
+        renderMain();
+        setSyncStatus("synced");
+        githubState.lastSyncedAt = new Date().toISOString();
+      }
+    }).catch(function(err){
+      setSyncStatus("offline", "Working from local copy — " + (err.message || "can't reach GitHub"));
+    });
+  }
+
+  // Best-effort flush when the tab is hidden/closed so edits aren't stranded locally.
+  document.addEventListener("visibilitychange", function(){
+    if(document.hidden && githubState.dirty && isGithubConfigured()){ githubPut(); }
+  });
+  window.addEventListener("pagehide", function(){
+    if(githubState.dirty && isGithubConfigured()){ githubPut(); }
+  });
+  // Periodic safety-net sync in case the debounce timer was interrupted.
+  ghPollTimer = setInterval(function(){
+    if(githubState.dirty && githubState.status !== "syncing" && isGithubConfigured()){ githubPut(); }
+  }, 25000);
+
+  function openGithubSettings(){
+    var overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    var cfg = githubCfg || {};
+    overlay.innerHTML =
+      '<div class="modal settings">' +
+        '<h3>GitHub sync</h3>' +
+        '<div class="modal-status" id="ghStatusBox"></div>' +
+        '<div class="field">' +
+          '<label>Personal access token</label>' +
+          '<div class="pw-wrap">' +
+            '<input type="password" id="ghToken" placeholder="github_pat_…" value="'+(githubToken?escAttr(githubToken):"")+'">' +
+            '<button type="button" id="ghTokenToggle">show</button>' +
+          '</div>' +
+          '<div class="hint">Create a fine-grained token at github.com → Settings → Developer settings, scoped to only this repository with Contents: Read and write permission.</div>' +
+        '</div>' +
+        '<div class="field">' +
+          '<label>Repository (owner/repo)</label>' +
+          '<input type="text" id="ghRepo" placeholder="yourname/my-notes" value="'+escAttr((cfg.owner&&cfg.repo)?(cfg.owner+"/"+cfg.repo):"")+'">' +
+        '</div>' +
+        '<div class="field-row">' +
+          '<div class="field">' +
+            '<label>Branch</label>' +
+            '<input type="text" id="ghBranch" placeholder="main" value="'+escAttr(cfg.branch||"main")+'">' +
+          '</div>' +
+          '<div class="field">' +
+            '<label>File path</label>' +
+            '<input type="text" id="ghPath" placeholder="data/notes.json" value="'+escAttr(cfg.path||"data/notes.json")+'">' +
+          '</div>' +
+        '</div>' +
+        '<div class="check-row"><input type="checkbox" id="ghRemember" '+(cfg.remember?"checked":"")+'> <label for="ghRemember">Remember token on this device (stored in this browser only — less secure if shared)</label></div>' +
+        '<div class="modal-actions" style="justify-content:space-between">' +
+          '<button class="btn btn-text" id="ghDisconnect">'+(isGithubConfigured()?"Disconnect":"")+'</button>' +
+          '<div style="display:flex;gap:8px">' +
+            '<button class="btn btn-secondary" id="ghCancel">Cancel</button>' +
+            '<button class="btn btn-primary" id="ghConnect">Connect &amp; sync</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+
+    var tokenInput = overlay.querySelector("#ghToken");
+    overlay.querySelector("#ghTokenToggle").addEventListener("click", function(e){
+      var btn = e.currentTarget;
+      if(tokenInput.type === "password"){ tokenInput.type = "text"; btn.textContent = "hide"; }
+      else{ tokenInput.type = "password"; btn.textContent = "show"; }
+    });
+    overlay.querySelector("#ghCancel").addEventListener("click", function(){ overlay.remove(); });
+    overlay.querySelector("#ghDisconnect").addEventListener("click", function(){
+      clearGithubToken();
+      githubCfg = null;
+      try{ localStorage.removeItem(GH_CFG_KEY); }catch(e){}
+      githubState = { sha:null, status:"disconnected", lastSyncedAt:null, dirty:false, message:"" };
+      renderSyncBar();
+      overlay.remove();
+      showToast("Disconnected from GitHub");
+    });
+
+    function showStatus(msg, isErr){
+      var box = overlay.querySelector("#ghStatusBox");
+      box.textContent = msg;
+      box.className = "modal-status show" + (isErr ? " err" : "");
+    }
+
+    overlay.querySelector("#ghConnect").addEventListener("click", function(){
+      var repoVal = overlay.querySelector("#ghRepo").value.trim();
+      var parts = repoVal.split("/").map(function(s){ return s.trim(); }).filter(Boolean);
+      var tokenVal = tokenInput.value.trim();
+      var branchVal = overlay.querySelector("#ghBranch").value.trim() || "main";
+      var pathVal = overlay.querySelector("#ghPath").value.trim() || "data/notes.json";
+      var rememberVal = overlay.querySelector("#ghRemember").checked;
+
+      if(parts.length !== 2){ showStatus("Enter the repository as owner/repo, e.g. yourname/my-notes", true); return; }
+      if(!tokenVal){ showStatus("A personal access token is required", true); return; }
+
+      showStatus("Checking access…", false);
+      var newCfg = { owner: parts[0], repo: parts[1], branch: branchVal, path: pathVal, remember: rememberVal };
+
+      githubCfg = newCfg;
+      githubToken = tokenVal;
+      githubState.sha = null;
+
+      githubGet().then(function(remoteNotes){
+        saveGithubCfg(newCfg);
+        saveGithubToken(tokenVal, rememberVal);
+        if(remoteNotes === null){
+          showStatus("Connected — no notes file there yet, your current notes will be pushed now.", false);
+          githubState.dirty = true;
+          githubPut();
+        } else {
+          // the repo's copy is authoritative, even if it's an empty list
+          state.notes = remoteNotes;
+          state.activeId = state.notes.length ? state.notes[0].id : null;
+          try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){}
+          renderSidebar();
+          renderMain();
+          showStatus("Connected — loaded " + remoteNotes.length + " note(s) from GitHub.", false);
+          setSyncStatus("synced");
+          githubState.lastSyncedAt = new Date().toISOString();
+        }
+        setTimeout(function(){ overlay.remove(); }, remoteNotes === null ? 1200 : 900);
+      }).catch(function(err){
+        var msg = err.status === 401 || err.status === 403
+          ? "GitHub rejected that token — check it has Contents read/write access to this repo."
+          : err.status === 404
+            ? "Repository not found — check the owner/repo name and that the token can see it."
+            : (err.message || "Couldn't reach GitHub.");
+        showStatus(msg, true);
+      });
+    });
+  }
+
+  document.getElementById("btnGithubSettings").addEventListener("click", function(e){
+    e.stopPropagation();
+    openGithubSettings();
+  });
+  document.getElementById("syncBar").addEventListener("click", function(e){
+    if(e.target.closest("#btnGithubSettings")) return;
+    syncNow();
+  });
+
+  /* ===================== sidebar rendering ===================== */
+  var searchQuery = "";
+  var activeTagFilter = null;
+
+  function allTags(){
+    var set = {};
+    state.notes.forEach(function(n){ (n.tags||[]).forEach(function(t){ set[t]=true; }); });
+    return Object.keys(set).sort();
+  }
+
+  function filteredNotes(){
+    var q = searchQuery.trim().toLowerCase();
+    return state.notes
+      .filter(function(n){
+        if(activeTagFilter && (n.tags||[]).indexOf(activeTagFilter) === -1) return false;
+        if(!q) return true;
+        var hay = (n.title + " " + (n.tags||[]).join(" ") + " " + plainText(n.content)).toLowerCase();
+        return hay.indexOf(q) !== -1;
+      })
+      .sort(function(a,b){ return new Date(b.updatedAt) - new Date(a.updatedAt); });
+  }
+
+  function renderTagFilters(){
+    var wrap = document.getElementById("tagFilters");
+    var tags = allTags();
+    if(!tags.length){ wrap.innerHTML = ""; return; }
+    wrap.innerHTML = tags.map(function(t){
+      var cls = "tag-chip" + (activeTagFilter === t ? " active" : "");
+      return '<span class="'+cls+'" data-tag="'+escAttr(t)+'">'+escHtml(t)+'</span>';
+    }).join("");
+    Array.prototype.forEach.call(wrap.querySelectorAll(".tag-chip"), function(el){
+      el.addEventListener("click", function(){
+        var t = el.getAttribute("data-tag");
+        activeTagFilter = (activeTagFilter === t) ? null : t;
+        renderSidebar();
+      });
+    });
+  }
+
+  function renderSidebar(){
+    renderTagFilters();
+    var list = document.getElementById("notesList");
+    var notes = filteredNotes();
+    if(!notes.length){
+      list.innerHTML = '<div class="empty-list">No notes match yet.</div>';
+      return;
+    }
+    list.innerHTML = notes.map(function(n){
+      var title = n.title && n.title.trim() ? escHtml(n.title) : "Untitled note";
+      var snippet = escHtml(plainText(n.content)).slice(0,90) || "No text yet";
+      var tagsHtml = (n.tags||[]).slice(0,3).map(function(t){ return '<span class="note-tag-chip">'+escHtml(t)+'</span>'; }).join("");
+      var active = n.id === state.activeId ? " active" : "";
+      return (
+        '<div class="note-item'+active+'" data-id="'+n.id+'">' +
+          '<div class="note-strip" style="background:'+n.color+'"></div>' +
+          '<div class="note-meta">' +
+            '<div class="note-title">'+title+'</div>' +
+            '<div class="note-snippet">'+snippet+'</div>' +
+            '<div class="note-sub"><span>'+relTime(n.updatedAt)+'</span>'+tagsHtml+'</div>' +
+          '</div>' +
+          '<button class="note-del" data-id="'+n.id+'" title="Delete note">' +
+            '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>' +
+          '</button>' +
+        '</div>'
+      );
+    }).join("");
+
+    Array.prototype.forEach.call(list.querySelectorAll(".note-item"), function(el){
+      el.addEventListener("click", function(e){
+        if(e.target.closest(".note-del")) return;
+        selectNote(el.getAttribute("data-id"));
+      });
+    });
+    Array.prototype.forEach.call(list.querySelectorAll(".note-del"), function(el){
+      el.addEventListener("click", function(e){
+        e.stopPropagation();
+        deleteNote(el.getAttribute("data-id"));
+      });
+    });
+  }
+
+  function escHtml(s){
+    return String(s||"").replace(/[&<>"']/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+    });
+  }
+  function escAttr(s){ return escHtml(s); }
+
+  /* ===================== note actions ===================== */
+  function selectNote(id){
+    state.activeId = id;
+    persist();
+    renderSidebar();
+    renderMain();
+  }
+
+  function createNote(){
+    var n = defaultNote({});
+    state.notes.unshift(n);
+    state.activeId = n.id;
+    persist();
+    renderSidebar();
+    renderMain();
+    var t = document.getElementById("titleInput");
+    if(t){ t.focus(); }
+  }
+
+  function deleteNote(id){
+    var n = findNote(id);
+    if(!n) return;
+    var label = n.title && n.title.trim() ? n.title.trim() : "this note";
+    if(!window.confirm('Delete "'+label+'"? This can\'t be undone.')) return;
+    state.notes = state.notes.filter(function(x){ return x.id !== id; });
+    if(state.activeId === id){
+      state.activeId = state.notes.length ? state.notes[0].id : null;
+    }
+    persist();
+    renderSidebar();
+    renderMain();
+  }
+
+  function duplicateNote(id){
+    var n = findNote(id);
+    if(!n) return;
+    var copy = JSON.parse(JSON.stringify(n));
+    copy.id = uid();
+    copy.title = (n.title || "Untitled note") + " (copy)";
+    copy.createdAt = copy.updatedAt = new Date().toISOString();
+    state.notes.unshift(copy);
+    state.activeId = copy.id;
+    persist();
+    renderSidebar();
+    renderMain();
+  }
+
+  function touchNote(n){
+    n.updatedAt = new Date().toISOString();
+  }
+
+  /* ===================== main / editor rendering ===================== */
+  var savedRange = null;
+  function saveSelection(){
+    var sel = window.getSelection();
+    if(sel && sel.rangeCount){ savedRange = sel.getRangeAt(0).cloneRange(); }
+  }
+  function restoreSelection(){
+    var editor = document.getElementById("editorArea");
+    if(!editor) return;
+    editor.focus();
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    if(savedRange && editor.contains(savedRange.startContainer)){
+      sel.addRange(savedRange);
+    } else {
+      var r = document.createRange();
+      r.selectNodeContents(editor);
+      r.collapse(false);
+      sel.addRange(r);
+    }
+  }
+  function insertHtmlAtSelection(html){
+    restoreSelection();
+    document.execCommand("insertHTML", false, html);
+    onEditorInput();
+  }
+
+  function icon(name){
+    var paths = {
+      bold:'<path d="M7 5h6a3.5 3.5 0 0 1 0 7H7zM7 12h7a3.5 3.5 0 0 1 0 7H7z"/>',
+      italic:'<path d="M10 5h7M7 19h7M14 5l-4 14"/>',
+      underline:'<path d="M6 4v7a6 6 0 0 0 12 0V4"/><path d="M5 20h14"/>',
+      strike:'<path d="M5 12h14"/><path d="M8 7c0-1.7 1.8-3 4-3s4 1 4 2.3M8 17c0 1.7 1.8 3 4 3s4-1.3 4-2.8"/>',
+      heading:'<path d="M6 5v14M16 5v14M6 12h10"/>',
+      quote:'<path d="M7 7c-2 1-3 3-3 5.5S5.5 17 8 17M15 7c-2 1-3 3-3 5.5S17.5 17 15 17"/>',
+      bullets:'<circle cx="5" cy="7" r="1.4"/><circle cx="5" cy="12" r="1.4"/><circle cx="5" cy="17" r="1.4"/><path d="M10 7h10M10 12h10M10 17h10"/>',
+      numbers:'<path d="M4 6h1v4M4 10h2M4.2 14.5c.4-.8 1.6-.8 2 0 .3.6-.1 1-.6 1.5l-1.6 1.5h2.3M10 6h10M10 12h10M10 18h10"/>',
+      image:'<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="M21 16l-5.5-5.5L5 21"/>',
+      checklist:'<path d="M4 6h3M4 12h3M4 18h3"/><path d="M10 6h10M10 12h10M10 18h10"/><path d="M5 5.2l.8.8L7 4.4" stroke-width="1.6"/>',
+      table:'<rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M3 10h18M3 16h18M9 4v16M15 4v16"/>',
+      draw:'<path d="M4 20l1-4.2L15.8 5a2 2 0 0 1 2.8 0l.4.4a2 2 0 0 1 0 2.8L8.2 19 4 20Z"/>',
+      print:'<path d="M6 9V3h12v6M6 18H4a1 1 0 0 1-1-1v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a1 1 0 0 1-1 1h-2"/><rect x="6" y="14" width="12" height="7"/>',
+      copy:'<rect x="9" y="9" width="12" height="12" rx="1.5"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/>',
+      trash:'<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>'
+    };
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">'+(paths[name]||"")+'</svg>';
+  }
+
+  function renderMain(){
+    var main = document.getElementById("mainArea");
+    var n = getActiveNote();
+    if(!n){
+      main.innerHTML =
+        '<div class="empty-main">' +
+          '<h2>A blank desk</h2>' +
+          '<p>Create a note to get a page you can write on, tick off, sketch on, or paste pictures into.</p>' +
+          '<button class="btn btn-primary" id="emptyNewBtn">New note</button>' +
+        '</div>';
+      document.getElementById("emptyNewBtn").addEventListener("click", createNote);
+      return;
+    }
+
+    main.innerHTML =
+      '<div class="toolbar">' +
+        '<div class="toolbar-row">' +
+          '<input type="text" id="titleInput" class="title-input" placeholder="Untitled note" value="'+escAttr(n.title)+'">' +
+          '<div class="tags-editor" id="tagsEditor"></div>' +
+          '<select class="ctrl" id="pageSizeSelect" title="Paper size">' +
+            '<option value="A4">A4</option><option value="A5">A5</option>' +
+          '</select>' +
+          '<select class="ctrl" id="paperStyleSelect" title="Paper style">' +
+            '<option value="blank">Blank</option><option value="ruled">Ruled</option><option value="grid">Grid</option>' +
+          '</select>' +
+          '<select class="ctrl" id="fontSelect" title="Writing font">' +
+            '<option value="serif">Serif</option><option value="sans">Sans</option>' +
+          '</select>' +
+          '<div class="util-group">' +
+            iconBtn("print","Print or save as PDF") +
+            iconBtn("copy","Duplicate note") +
+            iconBtn("trash","Delete note","danger") +
+          '</div>' +
+        '</div>' +
+        '<div class="toolbar-row">' +
+          groupBtn("bold","B","Bold") + groupBtn("italic","I","Italic") + groupBtn("underline","U","Underline") + groupBtn("strike","S","Strikethrough") +
+          '<div class="divider"></div>' +
+          groupBtn("heading","H","Heading") + groupBtn("quote","Q","Quote") + groupBtn("bullets","L","Bulleted list") + groupBtn("numbers","N","Numbered list") +
+          '<div class="divider"></div>' +
+          groupBtn("image","Img","Insert image") + groupBtn("checklist","Chk","Insert checklist item") + groupBtn("table","Tbl","Insert table") + groupBtn("draw","Draw","Insert a drawing") +
+          '<span class="save-indicator" id="saveIndicator">Saved '+relTime(n.updatedAt)+'</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="page-scroll"><div class="page size-'+n.pageSize+'" id="pageEl">' +
+        '<div class="editor font-'+n.font+' paper-'+n.paperStyle+'" id="editorArea" contenteditable="true" spellcheck="true"></div>' +
+      '</div></div>' +
+      '<input type="file" id="imageFile" accept="image/*" style="display:none">';
+
+    document.getElementById("editorArea").innerHTML = n.content || "<p></p>";
+    renderTagsEditor(n);
+    document.getElementById("pageSizeSelect").value = n.pageSize;
+    document.getElementById("paperStyleSelect").value = n.paperStyle;
+    document.getElementById("fontSelect").value = n.font;
+
+    bindToolbarEvents(n);
+  }
+
+  function iconBtn(name, title, extraClass){
+    return '<button class="icon-btn '+(extraClass||"")+'" data-action="'+name+'" title="'+title+'">'+icon(name)+'</button>';
+  }
+  function groupBtn(name, label, title){
+    return '<button class="icon-btn" data-cmd="'+name+'" title="'+title+'">'+icon(name)+'</button>';
+  }
+
+  function renderTagsEditor(n){
+    var wrap = document.getElementById("tagsEditor");
+    var html = (n.tags||[]).map(function(t,i){
+      return '<span class="tag-pill">'+escHtml(t)+'<button data-i="'+i+'" title="Remove tag">&times;</button></span>';
+    }).join("");
+    html += '<input type="text" class="tag-input" id="tagInput" placeholder="'+(n.tags&&n.tags.length?"add tag":"add tags…")+'">';
+    wrap.innerHTML = html;
+    Array.prototype.forEach.call(wrap.querySelectorAll(".tag-pill button"), function(b){
+      b.addEventListener("click", function(){
+        var i = parseInt(b.getAttribute("data-i"),10);
+        n.tags.splice(i,1);
+        touchNote(n); persist(); renderMain(); renderSidebar();
+      });
+    });
+    var input = document.getElementById("tagInput");
+    input.addEventListener("keydown", function(e){
+      if(e.key === "Enter" || e.key === ","){
+        e.preventDefault();
+        var v = input.value.trim().replace(/,$/,"");
+        if(v){
+          n.tags = n.tags || [];
+          if(n.tags.indexOf(v) === -1) n.tags.push(v);
+          touchNote(n); persist(); renderMain(); renderSidebar();
+        }
+      } else if(e.key === "Backspace" && !input.value && n.tags && n.tags.length){
+        n.tags.pop();
+        touchNote(n); persist(); renderMain(); renderSidebar();
+      }
+    });
+  }
+
+  function bindToolbarEvents(n){
+    document.getElementById("titleInput").addEventListener("input", function(e){
+      n.title = e.target.value;
+      touchNote(n); persist(); renderSidebar();
+    });
+
+    document.getElementById("pageSizeSelect").addEventListener("change", function(e){
+      n.pageSize = e.target.value;
+      document.getElementById("pageEl").className = "page size-" + n.pageSize;
+      touchNote(n); persist();
+    });
+    document.getElementById("paperStyleSelect").addEventListener("change", function(e){
+      n.paperStyle = e.target.value;
+      document.getElementById("editorArea").className = "editor font-"+n.font+" paper-"+n.paperStyle;
+      touchNote(n); persist();
+    });
+    document.getElementById("fontSelect").addEventListener("change", function(e){
+      n.font = e.target.value;
+      document.getElementById("editorArea").className = "editor font-"+n.font+" paper-"+n.paperStyle;
+      touchNote(n); persist();
+    });
+
+    Array.prototype.forEach.call(document.querySelectorAll(".util-group .icon-btn"), function(btn){
+      btn.addEventListener("click", function(){
+        var action = btn.getAttribute("data-action");
+        if(action === "print") doPrint(n);
+        else if(action === "copy") duplicateNote(n.id);
+        else if(action === "trash") deleteNote(n.id);
+      });
+    });
+
+    var cmdMap = {
+      bold:function(){ document.execCommand("bold"); },
+      italic:function(){ document.execCommand("italic"); },
+      underline:function(){ document.execCommand("underline"); },
+      strike:function(){ document.execCommand("strikeThrough"); },
+      heading:function(){ document.execCommand("formatBlock", false, "H2"); },
+      quote:function(){ document.execCommand("formatBlock", false, "BLOCKQUOTE"); },
+      bullets:function(){ document.execCommand("insertUnorderedList"); },
+      numbers:function(){ document.execCommand("insertOrderedList"); },
+      image:function(){ document.getElementById("imageFile").click(); },
+      checklist:function(){ insertHtmlAtSelection('<div class="chk-item"><input type="checkbox"><span>List item</span></div>'); },
+      table:insertTablePrompt,
+      draw:openDrawModal
+    };
+    Array.prototype.forEach.call(document.querySelectorAll("[data-cmd]"), function(btn){
+      btn.addEventListener("mousedown", function(e){ e.preventDefault(); saveSelection(); });
+      btn.addEventListener("click", function(){
+        restoreSelection();
+        var fn = cmdMap[btn.getAttribute("data-cmd")];
+        if(fn) fn();
+        onEditorInput();
+      });
+    });
+
+    var fileInput = document.getElementById("imageFile");
+    fileInput.addEventListener("change", function(){
+      var f = fileInput.files && fileInput.files[0];
+      if(f) insertImageFile(f);
+      fileInput.value = "";
+    });
+
+    var editor = document.getElementById("editorArea");
+    var inputTimer = null;
+    editor.addEventListener("input", function(){
+      clearTimeout(inputTimer);
+      inputTimer = setTimeout(onEditorInput, 300);
+    });
+    editor.addEventListener("blur", function(){ onEditorInput(); });
+    editor.addEventListener("change", function(e){
+      if(e.target && e.target.matches && e.target.matches("input[type=checkbox]")){
+        if(e.target.checked) e.target.setAttribute("checked",""); else e.target.removeAttribute("checked");
+        onEditorInput();
+      }
+    });
+    editor.addEventListener("paste", function(e){
+      var items = (e.clipboardData && e.clipboardData.items) || [];
+      for(var i=0;i<items.length;i++){
+        if(items[i].type && items[i].type.indexOf("image") === 0){
+          e.preventDefault();
+          var file = items[i].getAsFile();
+          if(file) insertImageFile(file);
+          return;
+        }
+      }
+    });
+    editor.addEventListener("dragover", function(e){ e.preventDefault(); });
+    editor.addEventListener("drop", function(e){
+      if(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length){
+        var f = e.dataTransfer.files[0];
+        if(f.type && f.type.indexOf("image") === 0){
+          e.preventDefault();
+          placeCaretAtPoint(e.clientX, e.clientY);
+          insertImageFile(f);
+        }
+      }
+    });
+
+    function onEditorInput(){
+      n.content = document.getElementById("editorArea").innerHTML;
+      touchNote(n);
+      persist();
+      var ind = document.getElementById("saveIndicator");
+      if(ind) ind.textContent = "Saved just now";
+      renderSidebarSoft();
+    }
+    window.__folioEditorInputHook = onEditorInput; // used by image/table/draw inserts
+  }
+
+  function placeCaretAtPoint(x,y){
+    var range;
+    if(document.caretRangeFromPoint){
+      range = document.caretRangeFromPoint(x,y);
+    } else if(document.caretPositionFromPoint){
+      var pos = document.caretPositionFromPoint(x,y);
+      if(pos){ range = document.createRange(); range.setStart(pos.offsetNode,pos.offset); }
+    }
+    if(range){
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      savedRange = range.cloneRange();
+    }
+  }
+
+  function renderSidebarSoft(){
+    // lighter refresh: keep scroll position, just rebuild (editor lives outside this list so focus is unaffected)
+    renderSidebar();
+  }
+
+  function insertImageFile(file){
+    var reader = new FileReader();
+    reader.onload = function(){
+      insertHtmlAtSelection('<img src="'+reader.result+'" alt="pasted image">');
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function insertTablePrompt(){
+    var rows = parseInt(window.prompt("How many rows?","3"),10);
+    var cols = parseInt(window.prompt("How many columns?","3"),10);
+    if(!rows || !cols || rows<1 || cols<1) return;
+    var html = '<table class="tbl">';
+    for(var r=0;r<rows;r++){
+      html += "<tr>";
+      for(var c=0;c<cols;c++){ html += "<td>&nbsp;</td>"; }
+      html += "</tr>";
+    }
+    html += "</table><p></p>";
+    insertHtmlAtSelection(html);
+  }
+
+  /* ===================== drawing modal ===================== */
+  function openDrawModal(){
+    saveSelection();
+    var overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    overlay.innerHTML =
+      '<div class="modal">' +
+        '<h3>Sketch a drawing</h3>' +
+        '<canvas id="drawCanvas" width="480" height="280"></canvas>' +
+        '<div class="modal-tools" id="penColors"></div>' +
+        '<div class="modal-actions">' +
+          '<button class="btn btn-text" id="drawClear">Clear</button>' +
+          '<button class="btn btn-secondary" id="drawCancel">Cancel</button>' +
+          '<button class="btn btn-primary" id="drawInsert">Insert drawing</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+
+    var colors = ["#23262B","#A6453C","#36495E","#4E8A5B","#AD8A54"];
+    var penColorsEl = overlay.querySelector("#penColors");
+    var current = colors[0];
+    penColorsEl.innerHTML = colors.map(function(c,i){
+      return '<span class="pen-dot'+(i===0?" active":"")+'" style="background:'+c+'" data-c="'+c+'"></span>';
+    }).join("") + '<span style="flex:1"></span><span style="font-size:12px;color:var(--ink-soft)">Draw with mouse or touch</span>';
+    Array.prototype.forEach.call(penColorsEl.querySelectorAll(".pen-dot"), function(dot){
+      dot.addEventListener("click", function(){
+        current = dot.getAttribute("data-c");
+        Array.prototype.forEach.call(penColorsEl.querySelectorAll(".pen-dot"), function(d){ d.classList.remove("active"); });
+        dot.classList.add("active");
+      });
+    });
+
+    var canvas = overlay.querySelector("#drawCanvas");
+    var ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.lineWidth = 3;
+    var drawing = false;
+
+    function posFromEvent(e){
+      var rect = canvas.getBoundingClientRect();
+      var cx = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+      var cy = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+      return {x:cx, y:cy};
+    }
+    function start(e){ drawing = true; var p = posFromEvent(e); ctx.strokeStyle = current; ctx.beginPath(); ctx.moveTo(p.x,p.y); e.preventDefault(); }
+    function move(e){ if(!drawing) return; var p = posFromEvent(e); ctx.lineTo(p.x,p.y); ctx.stroke(); e.preventDefault(); }
+    function end(){ drawing = false; }
+    canvas.addEventListener("mousedown", start);
+    canvas.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", end);
+    canvas.addEventListener("touchstart", start, {passive:false});
+    canvas.addEventListener("touchmove", move, {passive:false});
+    canvas.addEventListener("touchend", end);
+
+    overlay.querySelector("#drawClear").addEventListener("click", function(){
+      ctx.fillStyle = "#fff"; ctx.fillRect(0,0,canvas.width,canvas.height);
+    });
+    overlay.querySelector("#drawCancel").addEventListener("click", function(){ overlay.remove(); });
+    overlay.querySelector("#drawInsert").addEventListener("click", function(){
+      var dataUrl = canvas.toDataURL("image/png");
+      overlay.remove();
+      insertHtmlAtSelection('<img src="'+dataUrl+'" alt="drawing">');
+    });
+  }
+
+  /* ===================== print ===================== */
+  function doPrint(n){
+    var pageSize = n.pageSize === "A5" ? "148mm 210mm" : "210mm 297mm";
+    document.getElementById("printPageSize").textContent = "@page{ size:" + pageSize + "; margin:0; }";
+    var printRoot = document.getElementById("printRoot");
+    printRoot.innerHTML = '<div class="page size-'+n.pageSize+'"><div class="editor font-'+n.font+' paper-'+n.paperStyle+'">'+document.getElementById("editorArea").innerHTML+'</div></div>';
+    window.print();
+  }
+
+  /* ===================== export / import ===================== */
+  function exportAll(){
+    var blob = new Blob([JSON.stringify(state.notes, null, 2)], {type:"application/json"});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "folio-notes-" + new Date().toISOString().slice(0,10) + ".json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showToast("Exported all notes");
+  }
+
+  function importFromFile(file){
+    var reader = new FileReader();
+    reader.onload = function(){
+      var imported;
+      try{ imported = JSON.parse(reader.result); }
+      catch(e){ window.alert("That file doesn't look like a valid Folio export."); return; }
+      if(!Array.isArray(imported)){ window.alert("That file doesn't look like a valid Folio export."); return; }
+      var replace = window.confirm("Replace all current notes with the " + imported.length + " note(s) in this file?\n\nChoose Cancel to add them alongside your existing notes instead.");
+      if(replace){
+        state.notes = imported;
+      } else {
+        imported.forEach(function(n){ n.id = uid(); });
+        state.notes = imported.concat(state.notes);
+      }
+      state.activeId = state.notes.length ? state.notes[0].id : null;
+      persist();
+      renderSidebar();
+      renderMain();
+      showToast("Import complete");
+    };
+    reader.readAsText(file);
+  }
+
+  /* ===================== global bindings ===================== */
+  document.getElementById("btnNewNote").addEventListener("click", createNote);
+  document.getElementById("searchBox").addEventListener("input", function(e){
+    searchQuery = e.target.value;
+    renderSidebar();
+  });
+  document.getElementById("btnExport").addEventListener("click", exportAll);
+  document.getElementById("btnImport").addEventListener("click", function(){
+    document.getElementById("importFile").click();
+  });
+  document.getElementById("importFile").addEventListener("change", function(e){
+    var f = e.target.files && e.target.files[0];
+    if(f) importFromFile(f);
+    e.target.value = "";
+  });
+
+  document.addEventListener("keydown", function(e){
+    if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s"){
+      e.preventDefault();
+      try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); showToast("Saved"); }catch(err){}
+    }
+  });
+
+  /* ===================== boot ===================== */
+  renderSidebar();
+  renderMain();
+  renderSyncBar();
+  connectAndLoadGithub();
+
+})();
+</script>
+</body>
+</html>
