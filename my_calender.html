@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Vacation Planner - Dec 2026 to Jan 2027</title>
+
+<style>
+:root{
+    --office:#ffffff;
+    --wfh:#4a90e2;
+    --leave:#27ae60;
+    --weekend:#9e9e9e;
+    --holiday:#d32f2f;
+    --event:#8e44ad;
+    --border:#d9d9d9;
+    --bg:#f5f7fa;
+}
+
+*{box-sizing:border-box;}
+
+body{
+    margin:20px;
+    font-family:Segoe UI,Arial,sans-serif;
+    background:var(--bg);
+}
+
+h1{
+    text-align:center;
+    margin-bottom:5px;
+}
+
+.subtitle{
+    text-align:center;
+    color:#666;
+    margin-bottom:20px;
+}
+
+.legend{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    justify-content:center;
+    margin-bottom:20px;
+}
+
+.legend span{
+    padding:8px 12px;
+    border-radius:6px;
+    font-size:13px;
+    font-weight:bold;
+}
+
+.office{background:var(--office);border:1px solid #ccc;}
+.wfh{background:var(--wfh);color:white;}
+.timeoff{background:var(--leave);color:white;}
+.weekend{background:var(--weekend);color:white;}
+.holiday{background:var(--holiday);color:white;}
+.event{background:var(--event);color:white;}
+
+.dashboard{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:15px;
+    margin-bottom:25px;
+}
+
+.card{
+    background:white;
+    border-radius:10px;
+    padding:15px;
+    box-shadow:0 2px 6px rgba(0,0,0,.08);
+}
+
+.card h3{
+    margin:0 0 10px;
+    color:#2c3e50;
+}
+
+.card .big{
+    font-size:26px;
+    font-weight:bold;
+}
+
+.progress{
+    margin-top:8px;
+    height:12px;
+    background:#eee;
+    border-radius:10px;
+    overflow:hidden;
+}
+
+.progress-bar{
+    height:100%;
+    background:#27ae60;
+}
+
+.actions{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    justify-content:center;
+    margin-bottom:20px;
+}
+
+button{
+    border:none;
+    background:#2c3e50;
+    color:white;
+    padding:10px 14px;
+    border-radius:6px;
+    cursor:pointer;
+}
+
+button:hover{
+    opacity:.9;
+}
+
+.month{
+    margin-bottom:35px;
+}
+
+.month h2{
+    text-align:center;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:repeat(7,1fr);
+    gap:6px;
+}
+
+.header{
+    background:#2c3e50;
+    color:white;
+    text-align:center;
+    padding:10px;
+    font-weight:bold;
+}
+
+.day{
+    min-height:110px;
+    border-radius:8px;
+    padding:8px;
+    box-shadow:0 1px 3px rgba(0,0,0,.1);
+    position:relative;
+    cursor:pointer;
+}
+
+.fixed{
+    cursor:not-allowed;
+}
+
+.date{
+    font-weight:bold;
+    font-size:15px;
+}
+
+.status{
+    margin-top:5px;
+    font-size:12px;
+    font-weight:bold;
+}
+
+.note-preview{
+    margin-top:6px;
+    font-size:11px;
+    overflow:hidden;
+    display:-webkit-box;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+}
+
+.summary{
+    font-size:12px;
+    margin-top:6px;
+}
+
+.modal{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.5);
+    align-items:center;
+    justify-content:center;
+    z-index:999;
+}
+
+.modal-content{
+    width:min(95%,500px);
+    background:white;
+    border-radius:10px;
+    padding:20px;
+}
+
+.modal-content h3{
+    margin-top:0;
+}
+
+textarea{
+    width:100%;
+    height:120px;
+    padding:10px;
+}
+
+input[type=file]{
+    display:none;
+}
+
+.footer-note{
+    text-align:center;
+    color:#777;
+    margin-top:10px;
+    font-size:12px;
+}
+
+@media print{
+    body{
+        background:white;
+        margin:8px;
+    }
+
+    .actions,
+    .footer-note{
+        display:none;
+    }
+
+    .day{
+        min-height:95px;
+    }
+
+    .card{
+        box-shadow:none;
+        border:1px solid #ccc;
+    }
+}
+</style>
+</head>
+<body>
+
+<h1>Vacation Planner</h1>
+<div class="subtitle">2 Dec 2026 → 31 Jan 2027</div>
+
+<div class="legend">
+    <span class="office">Office</span>
+    <span class="wfh">WFH</span>
+    <span class="timeoff">Time Off</span>
+    <span class="weekend">Weekend</span>
+    <span class="holiday">Holiday</span>
+    <span class="event">Event</span>
+</div>
+
+<div class="dashboard" id="dashboard"></div>
+
+<div class="actions">
+    <button onclick="resetPlanner()">Reset Planner</button>
+    <button onclick="exportPlan()">Export Plan</button>
+    <button onclick="document.getElementById('importFile').click()">Import Plan</button>
+    <button onclick="window.print()">Print View</button>
+    <input type="file" id="importFile" accept=".json">
+</div>
+
+<div id="calendar"></div>
+
+<div class="footer-note">
+Click a normal day to cycle: Office → WFH → Time Off. Double-click to add notes.
+</div>
+
+<div class="modal" id="noteModal">
+    <div class="modal-content">
+        <h3 id="noteDate"></h3>
+        <textarea id="noteText"></textarea>
+        <br><br>
+        <button onclick="saveNote()">Save Note</button>
+        <button onclick="closeModal()">Cancel</button>
+    </div>
+</div>
+
+<script>
+
+const STORAGE_KEY="vacationPlannerDec2026Jan2027";
+
+const VAC2026=18;
+const VAC2027=25;
+const MAX_CARRY=5;
+
+let planner = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+
+let selectedDate="";
+
+const fixedStates = {
+
+    "2026-12-07":"WFH",
+    "2026-12-08":"WFH",
+    "2026-12-09":"WFH",
+    "2026-12-10":"WFH",
+    "2026-12-11":"WFH",
+
+    "2026-12-14":"WFH",
+    "2026-12-15":"WFH",
+    "2026-12-16":"WFH",
+    "2026-12-17":"WFH",
+    "2026-12-18":"WFH",
+
+    "2026-12-19":"Marriage",
+    "2026-12-26":"Reception",
+    "2026-12-27":"Reception",
+
+    "2026-12-25":"Holiday",
+    "2026-12-28":"Holiday",
+    "2027-01-01":"Holiday",
+
+    "2027-01-02":"Honeymoon",
+    "2027-01-03":"Honeymoon",
+    "2027-01-04":"Honeymoon",
+    "2027-01-05":"Honeymoon",
+    "2027-01-06":"Honeymoon",
+    "2027-01-07":"Honeymoon",
+    "2027-01-08":"Honeymoon",
+    "2027-01-09":"Honeymoon",
+    "2027-01-10":"Honeymoon",
+    "2027-01-11":"Honeymoon",
+    "2027-01-12":"Honeymoon",
+    "2027-01-13":"Honeymoon",
+    "2027-01-14":"Honeymoon",
+    "2027-01-15":"Honeymoon"
+};
+
+function savePlanner(){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(planner));
+}
+
+function getClassName(state){
+
+    switch(state){
+        case "WFH": return "wfh";
+        case "TimeOff": return "timeoff";
+        case "Weekend": return "weekend";
+        case "Holiday": return "holiday";
+        case "Marriage":
+        case "Reception":
+        case "Honeymoon":
+            return "event";
+        default:
+            return "office";
+    }
+}
+
+function isWeekend(d){
+    return d.getDay()===0 || d.getDay()===6;
+}
+
+function getState(iso,dateObj){
+
+    if(fixedStates[iso])
+        return fixedStates[iso];
+
+    if(planner[iso]?.state)
+        return planner[iso].state;
+
+    if(isWeekend(dateObj))
+        return "Weekend";
+
+    return "Office";
+}
+
+function cycleState(iso,current){
+
+    if(current==="Office")
+        planner[iso]={...(planner[iso]||{}),state:"WFH"};
+
+    else if(current==="WFH")
+        planner[iso]={...(planner[iso]||{}),state:"TimeOff"};
+
+    else
+        planner[iso]={...(planner[iso]||{}),state:"Office"};
+
+    savePlanner();
+    draw();
+}
+
+function renderMonth(year,month){
+
+    const names=["January","February","March","April",
+    "May","June","July","August","September",
+    "October","November","December"];
+
+    const monthDiv=document.createElement("div");
+    monthDiv.className="month";
+
+    monthDiv.innerHTML=`<h2>${names[month]} ${year}</h2>`;
+
+    const grid=document.createElement("div");
+    grid.className="grid";
+
+    ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].forEach(d=>{
+         let h=document.createElement("div");
+         h.className="header";
+         h.textContent=d;
+         grid.appendChild(h);
+    });
+
+    const first=new Date(year,month,1);
+    const offset=(first.getDay()+6)%7;
+
+    for(let i=0;i<offset;i++){
+        grid.appendChild(document.createElement("div"));
+    }
+
+    const lastDay=new Date(year,month+1,0).getDate();
+
+    for(let day=1; day<=lastDay; day++){
+
+        if(year===2026 && month===11 && day<2)
+            continue;
+
+        const dt=new Date(year,month,day);
+        const iso=dt.toISOString().split('T')[0];
+        const state=getState(iso,dt);
+
+        const div=document.createElement("div");
+        div.className="day "+getClassName(state);
+
+        if(fixedStates[iso] || state==="Weekend")
+            div.classList.add("fixed");
+
+        const note=planner[iso]?.note || "";
+
+        div.innerHTML=`
+            <div class="date">${day}</div>
+            <div class="status">${state}</div>
+            <div class="note-preview">${note}</div>
+        `;
+
+        if(!fixedStates[iso] && state!=="Weekend"){
+            div.addEventListener("click", ()=>{
+                cycleState(iso,state);
+            });
+        }
+
+        div.addEventListener("dblclick",(e)=>{
+            e.stopPropagation();
+            openNote(iso);
+        });
+
+        grid.appendChild(div);
+    }
+
+    monthDiv.appendChild(grid);
+    return monthDiv;
+}
+
+function calculateStats(){
+
+    let vac2026=0;
+    let vac2027=0;
+    let wfh=0;
+
+    Object.keys(planner).forEach(date=>{
+
+        const state=planner[date].state;
+
+        if(state==="WFH")
+            wfh++;
+
+        if(state==="TimeOff"){
+            if(date.startsWith("2026"))
+                vac2026++;
+            else
+                vac2027++;
+        }
+    });
+
+    Object.keys(fixedStates).forEach(date=>{
+
+        if(fixedStates[date]==="WFH")
+            wfh++;
+
+        if(fixedStates[date]==="Honeymoon")
+            vac2027++;
+    });
+
+    const carry=Math.min(
+        MAX_CARRY,
+        Math.max(0,VAC2026-vac2026)
+    );
+
+    const available2027=VAC2027+carry;
+
+    return {
+        vac2026,
+        vac2027,
+        carry,
+        wfh,
+        remaining2026:VAC2026-vac2026,
+        available2027,
+        remaining2027:available2027-vac2027
+    };
+}
+
+function renderDashboard(){
+
+    const s=calculateStats();
+
+    document.getElementById("dashboard").innerHTML=`
+
+    <div class="card">
+        <h3>2026 Vacation</h3>
+        <div>Used: <b>${s.vac2026}</b> / ${VAC2026}</div>
+        <div>Remaining: <b>${s.remaining2026}</b></div>
+        <div>Carry Forward: <b>${s.carry}</b></div>
+        <div class="progress">
+          <div class="progress-bar" style="width:${(s.vac2026/VAC2026)*100}%"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>2027 Vacation</h3>
+        <div>Available: <b>${s.available2027}</b></div>
+        <div>Used: <b>${s.vac2027}</b></div>
+        <div>Remaining: <b>${s.remaining2027}</b></div>
+        <div class="progress">
+          <div class="progress-bar" style="width:${(s.vac2027/s.available2027)*100}%"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>WFH Days</h3>
+        <div class="big">${s.wfh}</div>
+    </div>
+
+    <div class="card">
+        <h3>Summary</h3>
+        <div>2026 Leave Bank: ${VAC2026}</div>
+        <div>2027 Leave Bank: ${VAC2027}</div>
+        <div>Max Carry: ${MAX_CARRY}</div>
+    </div>
+    `;
+}
+
+function draw(){
+
+    renderDashboard();
+
+    const cal=document.getElementById("calendar");
+    cal.innerHTML="";
+
+    cal.appendChild(renderMonth(2026,11));
+    cal.appendChild(renderMonth(2027,0));
+}
+
+function resetPlanner(){
+
+    if(confirm("Reset all changes and notes?")){
+        localStorage.removeItem(STORAGE_KEY);
+        planner={};
+        draw();
+    }
+}
+
+function openNote(date){
+
+    selectedDate=date;
+
+    document.getElementById("noteDate").innerText="Notes - "+date;
+
+    document.getElementById("noteText").value=
+        planner[date]?.note || "";
+
+    document.getElementById("noteModal").style.display="flex";
+}
+
+function closeModal(){
+    document.getElementById("noteModal").style.display="none";
+}
+
+function saveNote(){
+
+    if(!planner[selectedDate])
+        planner[selectedDate]={};
+
+    planner[selectedDate].note=
+        document.getElementById("noteText").value;
+
+    savePlanner();
+    closeModal();
+    draw();
+}
+
+function exportPlan(){
+
+    const blob=new Blob(
+      [JSON.stringify(planner,null,2)],
+      {type:"application/json"}
+    );
+
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download="vacation-plan.json";
+    a.click();
+}
+
+document.getElementById("importFile")
+.addEventListener("change",function(e){
+
+    const file=e.target.files[0];
+    if(!file) return;
+
+    const reader=new FileReader();
+
+    reader.onload=function(evt){
+
+        try{
+            planner=JSON.parse(evt.target.result);
+            savePlanner();
+            draw();
+            alert("Plan imported successfully.");
+        }catch(err){
+            alert("Invalid JSON file.");
+        }
+    };
+
+    reader.readAsText(file);
+});
+
+draw();
+
+</script>
+</body>
+</html>
